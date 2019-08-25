@@ -27,7 +27,6 @@ class universe:
         self.assets = []
         for i in range(len(names)):
             self.assets.append(asset(names[i], means[i], std[i]))
-        
         self.mean_vec = means
         self.sigma = cov
     
@@ -49,7 +48,6 @@ class portfolio:
         buffer = "#####################\n"
         returns = str(round(self.mean, 2)) + " = "
         std = str(round(self.std, 2)) + "**2 = "
-
         for i in range(len(self.weights)):
             returns += str(round(self.weights[i], 2)) +  "x" + str(round(self.assets[i].mean, 2)) \
                 + "(" + self.assets[i].name + ")"
@@ -57,9 +55,7 @@ class portfolio:
                 + "**2(" + self.assets[i].name + ") + "
             if i != len(self.weights) - 1:
                 returns += " + "
-        
         std += "...\n"
-
         return  buffer + returns + "\n" + std + buffer
 
 def random_weights(asset_num):
@@ -102,7 +98,6 @@ def Markowitz_Risk_Min(univ, expected_return):
     sigma_inv = np.linalg.inv(sigma)
     one = np.array([1]*len(univ.mean_vec)).T
     
-    
     a = -1 * np.matmul(one.T, np.matmul(sigma_inv, one))
     b = -1 * np.matmul(mu.T, np.matmul(sigma_inv, one))
     c = b
@@ -110,19 +105,28 @@ def Markowitz_Risk_Min(univ, expected_return):
 
     A = np.array([[a,b],[c,d]])
     A_inv = np.linalg.inv(A)
-    
     y = np.array([1, expected_return])
-    
     Lagrangian_mult = np.matmul(A_inv, y)
     
     weights = -1* Lagrangian_mult[0] * np.matmul(sigma_inv, one) - Lagrangian_mult[1]* np.matmul(sigma_inv, mu)
-
     return portfolio(univ, weights)
 
-def efficient_frontierMC(universe, resolution = 5):
-    assert resolution >0
-    min_mean = min(univ.mean_vec)
-    max_mean = max(univ.mean_vec)
+def Markowitz_Risk_Min_Vec(univ, expected_return):
+    p = Markowitz_Risk_Min(univ, expected_return)
+    return p.std, p.mean
+
+def Min_Var_Mean(univ):
+    one = np.array([1]*len(univ.assets))
+    s_inv = np.linalg.inv(sigma)
+    numerator = np.matmul(mu, np.matmul(s_inv, one))
+    denominator = np.matmul(one, np.matmul(s_inv, one))
+    return numerator/denominator
+
+def bullet_curveMC(universe, resolution, maximum, minimum):
+    assert resolution > 0, "resolution can't be non-negative"
+    assert minimum<maximum, "minimum<maximum"
+    min_mean = minimum
+    max_mean = maximum
     mean_range = max_mean - min_mean 
     returns = []
 
@@ -131,23 +135,15 @@ def efficient_frontierMC(universe, resolution = 5):
     
     exp = []
     std = []
-    min_var = 100000
-    min_var_ret = 0
     for i in returns:
         p = Markowitz_Risk_Min(univ, i)
-        if p.std < min_var:
-            min_var = p.std
-            min_var_ret = p.mean
         exp.append(p.mean)
         std.append(p.std)
-    print(Markowitz_Risk_Min(univ, min_var_ret))
-    print(Markowitz_Risk_Min(univ, max_mean))
-    print(Markowitz_Risk_Min(univ, min_mean))
     return np.array(std), np.array(exp)
 
-
-
-
+def efficient_frontierMC(universe, resolution, maximum):
+    minimum = Min_Var_Mean(universe)
+    return bullet_curveMC(universe, resolution, maximum, minimum)
 
 
 
@@ -157,23 +153,20 @@ def efficient_frontierMC(universe, resolution = 5):
 
 from stockDataClean import stocks, mu, std, sigma
 
-
 univ = universe(stocks, mu, std, sigma)
 
-ef_std, ef_exp = efficient_frontierMC(univ, 1000)
+ef_std, ef_exp = efficient_frontierMC(univ, 100, .4)
 
-
-std, exp = random_portfolios(univ, 100)
-
+std, exp = bullet_curveMC(univ, 100, .4, .1)
 
 s, e = base_portfolios(univ)
 plt.style.use('seaborn')
 plt.xlabel('std')
 plt.ylabel('return')
 
-plt.scatter(ef_std, ef_exp)
+plt.scatter(ef_std, ef_exp, marker = '.')
 plt.scatter(s, e)
-plt.scatter(std, exp)
+plt.scatter(std, exp, marker = '.')
 
 plt.show()
 
