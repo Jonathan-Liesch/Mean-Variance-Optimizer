@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import math
+import random
 from matplotlib import pyplot as plt
 
 asset_counter = 0
@@ -61,24 +62,118 @@ class portfolio:
 
         return  buffer + returns + "\n" + std + buffer
 
+def random_weights(asset_num):
+    cuts = []
+    for i in range(asset_num-1):
+        cuts.append(random.random())
+    cuts.sort()
+    weights = []
+    start = 0
+    for cut in cuts:
+        weights.append(cut-start)
+        start = cut
+    weights.append(1-cuts[-1])
+    return np.array(weights)
+
+def random_portfolios(univ, port_num):
+    exp = []
+    stdev = []
+    for i in range(port_num):
+        p = portfolio(univ, random_weights(len(univ.assets)))
+        exp.append(p.mean)
+        stdev.append(p.std)
+    return np.array(stdev), np.array(exp)
+
+def base_portfolios(univ):
+    mean = []
+    std = []
+    num = len(univ.assets)
+    for i in range(num):
+        weights = [0] * num
+        weights[i] = 1
+        p = portfolio(univ, np.array(weights))
+        mean.append(p.mean)
+        std.append(p.std)
+    return np.array(std),np.array(mean)
+
+def Markowitz_Risk_Min(univ, expected_return):
+    mu = univ.mean_vec
+    sigma = univ.sigma
+    sigma_inv = np.linalg.inv(sigma)
+    one = np.array([1]*len(univ.mean_vec)).T
+    
+    
+    a = -1 * np.matmul(one.T, np.matmul(sigma_inv, one))
+    b = -1 * np.matmul(mu.T, np.matmul(sigma_inv, one))
+    c = b
+    d = -1 * np.matmul(mu.T, np.matmul(sigma_inv, mu))
+
+    A = np.array([[a,b],[c,d]])
+    A_inv = np.linalg.inv(A)
+    
+    y = np.array([1, expected_return])
+    
+    Lagrangian_mult = np.matmul(A_inv, y)
+    
+    weights = -1* Lagrangian_mult[0] * np.matmul(sigma_inv, one) - Lagrangian_mult[1]* np.matmul(sigma_inv, mu)
+
+    return portfolio(univ, weights)
+
+def efficient_frontierMC(universe, resolution = 5):
+    assert resolution >0
+    min_mean = min(univ.mean_vec)
+    max_mean = max(univ.mean_vec)
+    mean_range = max_mean - min_mean 
+    returns = []
+
+    for i in range(resolution+1):
+        returns.append(min_mean + i* mean_range/resolution)
+    
+    exp = []
+    std = []
+    min_var = 100000
+    min_var_ret = 0
+    for i in returns:
+        p = Markowitz_Risk_Min(univ, i)
+        if p.std < min_var:
+            min_var = p.std
+            min_var_ret = p.mean
+        exp.append(p.mean)
+        std.append(p.std)
+    print(Markowitz_Risk_Min(univ, min_var_ret))
+    print(Markowitz_Risk_Min(univ, max_mean))
+    print(Markowitz_Risk_Min(univ, min_mean))
+    return np.array(std), np.array(exp)
+
+
+
+
+
+
+
 #################
 #   Main
 #################
 
 from stockDataClean import stocks, mu, std, sigma
-import random
+
 
 univ = universe(stocks, mu, std, sigma)
 
-p1 = portfolio(univ, np.array([0,0,0,0,0,1]))
-
-print(stocks, mu, std, sep='\n')
-
-print(p1.mean, p1.std)
-print(p1)
+ef_std, ef_exp = efficient_frontierMC(univ, 1000)
 
 
-# plt.style.use('seaborn')
-# plt.scatter(standard_deviation, expected_return)
+std, exp = random_portfolios(univ, 100)
 
-# plt.show()
+
+s, e = base_portfolios(univ)
+plt.style.use('seaborn')
+plt.xlabel('std')
+plt.ylabel('return')
+
+plt.scatter(ef_std, ef_exp)
+plt.scatter(s, e)
+plt.scatter(std, exp)
+
+plt.show()
+
