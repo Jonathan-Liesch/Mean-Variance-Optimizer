@@ -4,7 +4,6 @@ import math
 from matplotlib import pyplot as plt
 
 asset_counter = 0
-
 class asset:
     def __init__(self, name, mean, stdDev):
         global asset_counter
@@ -12,6 +11,7 @@ class asset:
         self.name = name
         self.mean = mean
         self.std = stdDev
+        self.var = stdDev**2
         asset_counter += 1
 
     def __str__(self):
@@ -20,63 +20,65 @@ class asset:
             % {'id': self.id, 'name': str(self.name), 'mean': self.mean, 'std': self.std} \
                 + "#####################\n"
 
-def asset_mean_vec(assets):
-    returns = []
-    for asset in assets:
-        returns.append(asset.mean)
-    return np.asarray(returns)
 
-def port_mean(asset_means_vec, weights):
-    return np.matmul(asset_mean_vec(assets), weights)
-
-def port_std(weights,sigma):
-    return round(math.sqrt(np.matmul(weights.T, np.matmul(sigma, weights))), 4)
-
-
+class universe:
+    def __init__(self, names, means, std, cov):
+        self.assets = []
+        for i in range(len(names)):
+            self.assets.append(asset(names[i], means[i], std[i]))
+        
+        self.mean_vec = means
+        self.sigma = cov
+    
+    
 portfolio_count = 0
 class portfolio:
-    def __init__(self, assets, weights, covar):
+    def __init__(self, universe, weights):
+        assert len(universe.mean_vec) == len(weights), "number of weights don't match number of assets"
         global portfolio_count
         self.id = portfolio_count 
-        self.assets = assets
+        self.assets = universe.assets
         self.weights = weights
-        self.sigma = covar
-        self.mean = port_mean(asset_mean_vec(assets), weights)
-        self.std = port_std(weights, sigma)
+        self.mean = np.matmul(universe.mean_vec, weights)
+        self.var = np.matmul(weights.T, np.matmul(sigma, weights))
+        self.std = math.sqrt(self.var)
         portfolio_count += 1
 
     def __str__(self):
-        return "#####################\n" + \
-        "id: %(id)d \nweights: %(weights)s \nE[R]: %(mean)f \nStd: %(std)f\n" \
-            % {'id': self.id, 'weights': str(self.weights), 'mean': self.mean, 'std': self.std} \
-                + "#####################\n"
+        buffer = "#####################\n"
+        returns = str(round(self.mean, 2)) + " = "
+        std = str(round(self.std, 2)) + "**2 = "
+
+        for i in range(len(self.weights)):
+            returns += str(round(self.weights[i], 2)) +  "x" + str(round(self.assets[i].mean, 2)) \
+                + "(" + self.assets[i].name + ")"
+            std += str(round(self.weights[i], 2)) +  "x" + str(round(self.assets[i].std, 2)) \
+                + "**2(" + self.assets[i].name + ") + "
+            if i != len(self.weights) - 1:
+                returns += " + "
+        
+        std += "...\n"
+
+        return  buffer + returns + "\n" + std + buffer
 
 #################
 #   Main
 #################
 
-a1 = asset("goog", 10, 16)
-a2 = asset("sp", 8, 12)
-assets = [a1, a2]
+from stockDataClean import stocks, mu, std, sigma
+import random
 
-sigma = np.array([[16**2, 0],\
-                  [0, 12**2]])
+univ = universe(stocks, mu, std, sigma)
 
-f_weight = np.arange(0, 1.000000001, 0.001)
+p1 = portfolio(univ, np.array([0,0,0,0,0,1]))
 
-expected_return = []
-standard_deviation = []
+print(stocks, mu, std, sep='\n')
 
-for w in f_weight:
-    weight = np.array([w, 1-w])
-    p = portfolio(assets, weight, sigma) 
-    expected_return.append(p.mean)
-    standard_deviation.append(p.std)
+print(p1.mean, p1.std)
+print(p1)
 
-expected_return = np.asarray(expected_return)
-standard_deviation = np.asarray(standard_deviation)
 
-plt.style.use('seaborn')
-plt.scatter(standard_deviation, expected_return)
+# plt.style.use('seaborn')
+# plt.scatter(standard_deviation, expected_return)
 
-plt.show()
+# plt.show()
