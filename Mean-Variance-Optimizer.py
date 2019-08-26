@@ -168,11 +168,28 @@ def capital_allocation_line(universe):
     b = universe.rf
     run, rise = Market_Portfolio_Vec(universe)[:2]
     m = rise/run
-    x = np.linspace(0, max(ef_std), 10)
+    x = np.linspace(0, max([asset.std for asset in universe.assets]), 100)
     y = m*x+b
-    print(x)
     return x, y
 
+###################
+def plot_efficient_frontierHM_1(universe):
+    ef_std, ef_exp, ef_sharpe = efficient_frontier(univ, 1000, .4)
+    plt.scatter(ef_std, ef_exp, c=ef_sharpe, cmap = 'jet', marker = ".", norm = matplotlib.colors.PowerNorm(5))
+    plt.colorbar(label = 'Sharpe Ratio',ticks = [1.6, 1.575, 1.55, 1.50, 1.40]).ax.set_ylabel('Sharpe Ratio', rotation = 270, labelpad=25)
+
+def plot_efficient_frontierHM_2(universe):
+    ef_std, ef_exp, ef_sharpe = efficient_frontier(univ, 1000, .4)
+    plt.scatter(ef_std, ef_exp, c=ef_sharpe, cmap = 'GnBu', marker = ".", norm = matplotlib.colors.PowerNorm(5))
+    plt.colorbar(label = 'Sharpe Ratio',ticks = [1.6, 1.575, 1.55, 1.50, 1.40]).ax.set_ylabel('Sharpe Ratio', rotation = 270, labelpad=25)
+
+def plot_CAL(universe):
+    x,y = capital_allocation_line(universe)
+    plt.plot(x, y, zorder = 1)
+
+def plot_Market_Portfolio(universe):
+    std, mean = Market_Portfolio_Vec(universe)[:2]
+    plt.scatter(std, mean, c='mediumaquamarine', zorder=2)
 
 #################
 #   Main
@@ -183,16 +200,13 @@ from stockDataClean import stocks, mu, std, sigma
 univ = universe(stocks, mu, std, sigma, 0)
 
 
-ef_std, ef_exp, ef_sharpe = efficient_frontier(univ, 1000, .4)
 
 plt.style.use('seaborn')
 plt.xlabel('Standard Deviation')
 plt.ylabel('Expected Return')
-x,y = capital_allocation_line(univ)
-plt.plot(x, y)
 
-plt.scatter(ef_std, ef_exp, c=ef_sharpe, cmap = 'jet', marker = ".", norm = matplotlib.colors.PowerNorm(5))
-plt.colorbar(label = 'Sharpe Ratio',ticks = [1.6, 1.575, 1.55, 1.50, 1.40]).ax.set_ylabel('Sharpe Ratio', rotation = 270, labelpad=25)
-
+plot_efficient_frontierHM_2(univ)
+plot_CAL(univ)
+plot_Market_Portfolio(univ)
 plt.show()
 
