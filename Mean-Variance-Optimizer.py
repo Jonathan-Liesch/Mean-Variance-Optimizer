@@ -245,6 +245,5 @@ plot_efficient_frontier(univ, heat_map = True)
 plot_CAL(univ)
 plot_Market_Portfolio(univ)
 plot_Min_Var_Portfolio(univ)
-
 plt.show()
 

@@ -4,9 +4,17 @@ import re
 import math
 from scipy import stats
 
+def csv_files(stock_folder):
+    csvs = []
+    for file_name in os.listdir("./" + stock_folder):
+        if os.path.splitext(file_name)[1] == '.csv':
+            csvs.append(file_name)
+    assert len(csvs) > 0, "Add stocks data to folder"
+    return csvs
+
 def get_raw_df(stock_folder):
     df = pd.DataFrame()
-    stock_file_paths = [stock_folder+"/"+stock for stock in os.listdir("./" + stock_folder)]
+    stock_file_paths = [stock_folder+"/"+stock for stock in csv_files(stock_folder)]
     for stock_file in stock_file_paths:
         stock_csv = re.split("/", stock_file)[-1]
         ticker = re.split("\.", stock_csv)[0]
