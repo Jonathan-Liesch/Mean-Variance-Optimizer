@@ -176,16 +176,30 @@ def capital_allocation_line(universe):
 ###################
 # Plotting
 ###################
+def plot_asset_annotations(universe):
+    for asset in universe.assets:
+        plt.annotate(asset.name, (asset.std, asset.mean))
+
 def plot_assets(universe):
     std, exp = base_portfolios(universe)
     plt.scatter(std, exp, c = 'cadetblue')
+    plot_asset_annotations(universe)
 
-def plot_bullet_curve(universe):
+def plot_bullet_curve(universe, heat_map = False):
     market_mean = Market_Portfolio(universe).mean
     upperbound = max(max(asset.mean for asset in universe.assets)*1.5, market_mean+0.05)
-    std, exp, sharpe = bullet_curve(universe, 1000, upperbound, 0.0001)
-    plt.scatter(std, exp, c=sharpe, cmap = 'jet', marker = ".", norm = matplotlib.colors.PowerNorm(5))
-    plt.colorbar(label = 'Sharpe Ratio',ticks = [1.6, 1.575, 1.55, 1.50, 1.40, 1.3, 1.2, 1.1]).ax.set_ylabel('Sharpe Ratio', rotation = 270, labelpad=25)
+    std, exp, sharpe = bullet_curve(universe, 1500, upperbound, 0.0001)
+    if heat_map == True:
+        resolution = 100
+        cmap = matplotlib.cm.Blues(np.linspace(0,1,resolution))
+        cmap = matplotlib.colors.ListedColormap(cmap[int(resolution/4):,:-1])
+        minimum = min(sharpe)
+        maximum = max(sharpe)
+        norm = matplotlib.colors.Normalize(vmin=minimum, vmax=maximum)
+        plt.scatter(std, exp, c=sharpe, cmap = cmap, marker = ".", norm = norm)
+        plt.colorbar().ax.set_ylabel('Sharpe Ratio', rotation = 270, labelpad=25)
+    else:
+        plt.scatter(std, exp, marker = ".", c = "darkslateblue")
 
 def plot_efficient_frontier(universe, heat_map = False):
     market_mean = Market_Portfolio(universe).mean
@@ -226,7 +240,6 @@ plt.style.use('seaborn')
 plt.title("Efficient Frontier")
 plt.xlabel('Standard Deviation')
 plt.ylabel('Expected Return')
-
 plot_assets(univ)
 plot_efficient_frontier(univ, heat_map = True)
 plot_CAL(univ)
