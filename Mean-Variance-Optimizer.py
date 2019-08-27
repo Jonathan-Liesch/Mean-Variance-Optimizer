@@ -174,6 +174,8 @@ def capital_allocation_line(universe):
     return x, y
 
 ###################
+# Plotting
+###################
 def plot_assets(universe):
     std, exp = base_portfolios(universe)
     plt.scatter(std, exp, c = 'cadetblue')
@@ -189,7 +191,6 @@ def plot_efficient_frontier(universe, heat_map = False):
     market_mean = Market_Portfolio(universe).mean
     upperbound = max(max(asset.mean for asset in universe.assets)*1.5, market_mean+0.05)
     ef_std, ef_exp, ef_sharpe = efficient_frontier(univ, 1000, upperbound)
-        
     if heat_map == True:
         resolution = 100
         cmap = matplotlib.cm.Blues(np.linspace(0,1,resolution))
@@ -199,7 +200,6 @@ def plot_efficient_frontier(universe, heat_map = False):
         norm = matplotlib.colors.Normalize(vmin=minimum, vmax=maximum)
         plt.scatter(ef_std, ef_exp, c=ef_sharpe, cmap = cmap, marker = ".", norm = norm)
         plt.colorbar().ax.set_ylabel('Sharpe Ratio', rotation = 270, labelpad=25)
-
     else:
         plt.scatter(ef_std, ef_exp, marker = ".", c = "darkslateblue")
 
@@ -218,11 +218,9 @@ def plot_Min_Var_Portfolio(universe):
 #################
 #   Main
 #################
-
 from stockDataClean import stocks, mu, std, sigma
 
 univ = universe(stocks, mu, std, sigma, 0.02)
-
 
 plt.style.use('seaborn')
 plt.title("Efficient Frontier")
@@ -234,5 +232,6 @@ plot_efficient_frontier(univ, heat_map = True)
 plot_CAL(univ)
 plot_Market_Portfolio(univ)
 plot_Min_Var_Portfolio(univ)
+
 plt.show()
 
