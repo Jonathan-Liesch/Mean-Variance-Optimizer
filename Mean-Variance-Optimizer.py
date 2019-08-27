@@ -28,9 +28,10 @@ class universe:
         self.assets = []
         for i in range(len(names)):
             self.assets.append(asset(names[i], means[i], std[i]))
+        self.rf = rf
         self.mean_vec = means
         self.sigma = cov
-        self.rf = rf
+        self.excess_mean_vec = self.mean_vec - rf
     
 portfolio_count = 0
 class portfolio:
@@ -132,8 +133,8 @@ def Min_Var_Portfolio_Vec(univ):
 def Market_Portfolio(univ):
     sigma_inv = np.linalg.inv(univ.sigma)
     one = np.array([1]*len(univ.assets))
-    numerator = np.matmul(sigma_inv, mu)
-    denominator = np.matmul(one, np.matmul(sigma_inv, mu))
+    numerator = np.matmul(sigma_inv, univ.excess_mean_vec)
+    denominator = np.matmul(one, np.matmul(sigma_inv, univ.excess_mean_vec))
     weights = np.array(numerator/denominator)
     return portfolio(univ, weights)
 
@@ -143,7 +144,7 @@ def Market_Portfolio_Vec(univ):
 
 def bullet_curve(universe, resolution, maximum, minimum):
     assert resolution > 0, "resolution can't be non-negative"
-    assert minimum<maximum, "minimum<maximum"
+    assert minimum<maximum, "cannot have minimum>=maximum"
     min_mean = minimum
     max_mean = maximum
     mean_range = max_mean - min_mean 
@@ -167,21 +168,40 @@ def efficient_frontier(universe, resolution, maximum):
 def capital_allocation_line(universe):
     b = universe.rf
     run, rise = Market_Portfolio_Vec(universe)[:2]
-    m = rise/run
+    m = (rise-b)/run
     x = np.linspace(0, max([asset.std for asset in universe.assets]), 100)
     y = m*x+b
     return x, y
 
 ###################
-def plot_efficient_frontierHM_1(universe):
-    ef_std, ef_exp, ef_sharpe = efficient_frontier(univ, 1000, .4)
-    plt.scatter(ef_std, ef_exp, c=ef_sharpe, cmap = 'jet', marker = ".", norm = matplotlib.colors.PowerNorm(5))
-    plt.colorbar(label = 'Sharpe Ratio',ticks = [1.6, 1.575, 1.55, 1.50, 1.40]).ax.set_ylabel('Sharpe Ratio', rotation = 270, labelpad=25)
+def plot_assets(universe):
+    std, exp = base_portfolios(universe)
+    plt.scatter(std, exp, c = 'cadetblue')
 
-def plot_efficient_frontierHM_2(universe):
-    ef_std, ef_exp, ef_sharpe = efficient_frontier(univ, 1000, .4)
-    plt.scatter(ef_std, ef_exp, c=ef_sharpe, cmap = 'GnBu', marker = ".", norm = matplotlib.colors.PowerNorm(5))
-    plt.colorbar(label = 'Sharpe Ratio',ticks = [1.6, 1.575, 1.55, 1.50, 1.40]).ax.set_ylabel('Sharpe Ratio', rotation = 270, labelpad=25)
+def plot_bullet_curve(universe):
+    market_mean = Market_Portfolio(universe).mean
+    upperbound = max(max(asset.mean for asset in universe.assets)*1.5, market_mean+0.05)
+    std, exp, sharpe = bullet_curve(universe, 1000, upperbound, 0.0001)
+    plt.scatter(std, exp, c=sharpe, cmap = 'jet', marker = ".", norm = matplotlib.colors.PowerNorm(5))
+    plt.colorbar(label = 'Sharpe Ratio',ticks = [1.6, 1.575, 1.55, 1.50, 1.40, 1.3, 1.2, 1.1]).ax.set_ylabel('Sharpe Ratio', rotation = 270, labelpad=25)
+
+def plot_efficient_frontier(universe, heat_map = False):
+    market_mean = Market_Portfolio(universe).mean
+    upperbound = max(max(asset.mean for asset in universe.assets)*1.5, market_mean+0.05)
+    ef_std, ef_exp, ef_sharpe = efficient_frontier(univ, 1000, upperbound)
+        
+    if heat_map == True:
+        resolution = 100
+        cmap = matplotlib.cm.Blues(np.linspace(0,1,resolution))
+        cmap = matplotlib.colors.ListedColormap(cmap[int(resolution/4):,:-1])
+        minimum = min(ef_sharpe)
+        maximum = max(ef_sharpe)
+        norm = matplotlib.colors.Normalize(vmin=minimum, vmax=maximum)
+        plt.scatter(ef_std, ef_exp, c=ef_sharpe, cmap = cmap, marker = ".", norm = norm)
+        plt.colorbar().ax.set_ylabel('Sharpe Ratio', rotation = 270, labelpad=25)
+
+    else:
+        plt.scatter(ef_std, ef_exp, marker = ".", c = "darkslateblue")
 
 def plot_CAL(universe):
     x,y = capital_allocation_line(universe)
@@ -189,7 +209,11 @@ def plot_CAL(universe):
 
 def plot_Market_Portfolio(universe):
     std, mean = Market_Portfolio_Vec(universe)[:2]
-    plt.scatter(std, mean, c='mediumaquamarine', zorder=2)
+    plt.scatter(std, mean, c='teal', zorder=2)
+
+def plot_Min_Var_Portfolio(universe):
+    std, mean = Min_Var_Portfolio_Vec(universe)[:2]
+    plt.scatter(std, mean, c='teal', zorder=2)
 
 #################
 #   Main
@@ -197,16 +221,18 @@ def plot_Market_Portfolio(universe):
 
 from stockDataClean import stocks, mu, std, sigma
 
-univ = universe(stocks, mu, std, sigma, 0)
-
+univ = universe(stocks, mu, std, sigma, 0.02)
 
 
 plt.style.use('seaborn')
+plt.title("Efficient Frontier")
 plt.xlabel('Standard Deviation')
 plt.ylabel('Expected Return')
 
-plot_efficient_frontierHM_2(univ)
+plot_assets(univ)
+plot_efficient_frontier(univ, heat_map = True)
 plot_CAL(univ)
 plot_Market_Portfolio(univ)
+plot_Min_Var_Portfolio(univ)
 plt.show()
 
