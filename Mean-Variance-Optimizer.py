@@ -32,7 +32,18 @@ class universe:
         self.mean_vec = means
         self.sigma = cov
         self.excess_mean_vec = self.mean_vec - rf
-    
+
+    def remove_assets(self, names):
+        assetNames = [asset.name for asset in self.assets]
+        for name in names:
+            assert name in assetNames
+            index = assetNames.index(name)
+            del self.assets[index]
+            self.mean_vec = np.delete(self.mean_vec, index)
+            self.excess_mean_vec = np.delete(self.excess_mean_vec, index)
+            self.sigma = np.delete(self.sigma, index, axis = 0)
+            self.sigma = np.delete(self.sigma, index, axis = 1)
+
 portfolio_count = 0
 class portfolio:
     def __init__(self, universe, weights):
@@ -42,7 +53,7 @@ class portfolio:
         self.assets = universe.assets
         self.weights = weights
         self.mean = np.matmul(universe.mean_vec, weights)
-        self.var = np.matmul(weights.T, np.matmul(sigma, weights))
+        self.var = np.matmul(weights.T, np.matmul(universe.sigma, weights))
         self.std = math.sqrt(self.var)
         self.sharpe = (self.mean - universe.rf)/self.std
         portfolio_count += 1
@@ -97,8 +108,7 @@ def base_portfolios(univ):
 
 def Markowitz_Risk_Min(univ, expected_return):
     mu = univ.mean_vec
-    sigma = univ.sigma
-    sigma_inv = np.linalg.inv(sigma)
+    sigma_inv = np.linalg.inv(univ.sigma)
     one = np.array([1]*len(univ.mean_vec)).T
     
     a = -1 * np.matmul(one.T, np.matmul(sigma_inv, one))
@@ -119,8 +129,8 @@ def Markowitz_Risk_Min_Vec(univ, expected_return):
 
 def Min_Var_Mean(univ):
     one = np.array([1]*len(univ.assets))
-    s_inv = np.linalg.inv(sigma)
-    numerator = np.matmul(mu, np.matmul(s_inv, one))
+    s_inv = np.linalg.inv(univ.sigma)
+    numerator = np.matmul(univ.mean_vec, np.matmul(s_inv, one))
     denominator = np.matmul(one, np.matmul(s_inv, one))
     return numerator/denominator
 
@@ -235,11 +245,14 @@ def plot_Min_Var_Portfolio(universe):
 from stockDataClean import stocks, mu, std, sigma
 
 univ = universe(stocks, mu, std, sigma, 0.02)
-
+print(Min_Var_Portfolio(univ))
+univ.remove_assets(['WFC'])
+print(Min_Var_Portfolio(univ))
 plt.style.use('seaborn')
 plt.title("Efficient Frontier")
 plt.xlabel('Standard Deviation')
 plt.ylabel('Expected Return')
+
 plot_assets(univ)
 plot_efficient_frontier(univ, heat_map = True)
 plot_CAL(univ)
