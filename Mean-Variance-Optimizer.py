@@ -44,6 +44,8 @@ class universe:
             self.sigma = np.delete(self.sigma, index, axis = 0)
             self.sigma = np.delete(self.sigma, index, axis = 1)
 
+    #def add_assets(self, names):
+
 portfolio_count = 0
 class portfolio:
     def __init__(self, universe, weights):
@@ -175,13 +177,40 @@ def efficient_frontier(universe, resolution, maximum):
     minimum = Min_Var_Mean(universe)
     return bullet_curve(universe, resolution, maximum, minimum)
 
-def capital_allocation_line(universe):
+def capital_allocation_equation(universe, std):
+    x = std
     b = universe.rf
     run, rise = Market_Portfolio_Vec(universe)[:2]
     m = (rise-b)/run
-    x = np.linspace(0, max([asset.std for asset in universe.assets]), 100)
     y = m*x+b
+    return y
+
+def captial_allocation_equation_inv(universe, mean):
+    y = std
+    b = universe.rf
+    run, rise = Market_Portfolio_Vec(universe)[:2]
+    m = (rise-b)/run
+    x = (1/m)*y - b
+    return y
+
+def capital_allocation_line(universe):
+    x = np.linspace(0, max([asset.std for asset in universe.assets]), 100)
+    y = capital_allocation_equation(universe, x)
     return x, y
+
+def two_fund_portfolio(univ, mean):
+    m_std, m_mean = Market_Portfolio_Vec(univ)[:2]
+    names = ['market', 'rf']
+    mean_vec = np.array([m_mean, univ.rf])
+    covariance_mat = np.array([[m_std**2+0.000001, 0],[0, 0+0.000001]])
+    std_vec = np.array([covariance_mat[0][0], covariance_mat[1][1]])
+    two_funds = universe(names, mean_vec, std_vec, covariance_mat, univ.rf)
+    s, m, _= Markowitz_Risk_Min_Vec(two_funds, 0.1)
+    print(Markowitz_Risk_Min(two_funds, 0.1))
+    print(m, s)
+    plt.scatter(s, m)
+
+
 
 ###################
 # Plotting
@@ -196,6 +225,7 @@ def plot_assets(universe):
     plot_asset_annotations(universe)
 
 def plot_bullet_curve(universe, heat_map = False):
+    plt.title("Bullet Curve")
     market_mean = Market_Portfolio(universe).mean
     upperbound = max(max(asset.mean for asset in universe.assets)*1.5, market_mean+0.05)
     std, exp, sharpe = bullet_curve(universe, 1500, upperbound, 0.0001)
@@ -212,6 +242,7 @@ def plot_bullet_curve(universe, heat_map = False):
         plt.scatter(std, exp, marker = ".", c = "darkslateblue")
 
 def plot_efficient_frontier(universe, heat_map = False):
+    plt.title("Efficient Frontier")
     market_mean = Market_Portfolio(universe).mean
     upperbound = max(max(asset.mean for asset in universe.assets)*1.5, market_mean+0.05)
     ef_std, ef_exp, ef_sharpe = efficient_frontier(univ, 1000, upperbound)
@@ -245,16 +276,13 @@ def plot_Min_Var_Portfolio(universe):
 from stockDataClean import stocks, mu, std, sigma
 
 univ = universe(stocks, mu, std, sigma, 0.02)
-print(Min_Var_Portfolio(univ))
-univ.remove_assets(['WFC'])
-print(Min_Var_Portfolio(univ))
 plt.style.use('seaborn')
-plt.title("Efficient Frontier")
 plt.xlabel('Standard Deviation')
 plt.ylabel('Expected Return')
 
+two_fund_portfolio(univ, 0.1)
 plot_assets(univ)
-plot_efficient_frontier(univ, heat_map = True)
+plot_bullet_curve(univ, heat_map = True)
 plot_CAL(univ)
 plot_Market_Portfolio(univ)
 plot_Min_Var_Portfolio(univ)
