@@ -205,12 +205,11 @@ def two_fund_portfolio(univ, mean):
     covariance_mat = np.array([[m_std**2+0.000001, 0],[0, 0+0.000001]])
     std_vec = np.array([covariance_mat[0][0], covariance_mat[1][1]])
     two_funds = universe(names, mean_vec, std_vec, covariance_mat, univ.rf)
-    s, m, _= Markowitz_Risk_Min_Vec(two_funds, 0.1)
-    print(Markowitz_Risk_Min(two_funds, 0.1))
-    print(m, s)
-    plt.scatter(s, m)
+    return Markowitz_Risk_Min(two_funds, mean)
 
-
+def two_fund_portfolio_vec(univ, mean):
+    p = two_fund_portfolio(univ, mean)
+    return p.std, p.mean, p.sharpe
 
 ###################
 # Plotting
@@ -270,21 +269,34 @@ def plot_Min_Var_Portfolio(universe):
     std, mean = Min_Var_Portfolio_Vec(universe)[:2]
     plt.scatter(std, mean, c='teal', zorder=2)
 
+def plot_Risk_Free_Portfolio(universe):
+    plt.scatter(0, universe.rf,c='teal', zorder=2)
+
+def plot_Two_Fund_Portfolio(universe, mean):
+    std, mean = two_fund_portfolio_vec(universe, mean)[:2]
+    plt.scatter(std, mean, c='grey', zorder=2)
+
 #################
 #   Main
 #################
 from stockDataClean import stocks, mu, std, sigma
 
-univ = universe(stocks, mu, std, sigma, 0.02)
+rf = 0.02 #Risk-Free Rate
+
+univ = universe(stocks, mu, std, sigma, rf)
 plt.style.use('seaborn')
 plt.xlabel('Standard Deviation')
 plt.ylabel('Expected Return')
 
-two_fund_portfolio(univ, 0.1)
+util_tangent_ret = 0.1
 plot_assets(univ)
 plot_bullet_curve(univ, heat_map = True)
+#plot_efficient_frontier(univ, heat_map=False)
 plot_CAL(univ)
+plot_Risk_Free_Portfolio(univ)
 plot_Market_Portfolio(univ)
 plot_Min_Var_Portfolio(univ)
-plt.show()
+plot_Two_Fund_Portfolio(univ, util_tangent_ret)
 
+########################
+plt.show()
